@@ -1,6 +1,11 @@
 /*
  * Austin McCalley 2020
  * Process file for the points listener
+ *
+ *
+ * TODO: Add create user in util
+ * TODO: Add update user in util
+ * TODO: Add update points for user in util
  */
 
 import { Client, Message } from 'discord.js'
@@ -45,30 +50,32 @@ export const pointsListener: ProcessInterface = {
 
                 let thankeesArray = thankees.map(user => user.id)
                 let thankeesString = thankeesArray.toString()
+                let allIds = thankeesArray
+                allIds.push(authorID)
 
                 // Sign header to get data
                 // TODO: Add secret to config file
-                jwt.sign(
-                    { bot: client.user.id },
-                    'testsecret',
-                    (err, token) => {
-                        // TODO: Handle this error better
-                        if (err) throw Error(err)
+                jwt.sign({ bot: client.user.id }, 'test', (err, token) => {
+                    // TODO: Handle this error better
+                    if (err) throw Error(err)
 
-                        const headers = {
-                            Authorization: 'Bearer ' + token
-                        }
+                    const headers = {
+                        Authorization: 'Bearer ' + token
+                    }
 
-                        fetch(
-                            `http://127.0.0.1:3000/user/multiple/${authorID},${thankeesString}`,
-                            { headers }
-                        )
-                            .then(res => res.json())
-                            .then(json => {
-                                if (json.length !== thankeesArray.length + 1) {
-                                    let users = json.map(user => user.id)
-                                    console.log(users)
-                                    console.log(thankeesArray)
+                    fetch(
+                        `http://127.0.0.1:3000/user/multiple/${authorID},${thankeesString}`,
+                        { headers }
+                    )
+                        .then(res => res.json())
+                        .then(ret => {
+                            // TODO: Check if invalid signature
+                            // console.log(ret.length, thankeesArray.length + 1)
+                            if (ret.length !== thankeesArray.length + 1) {
+                                let users = ret.map(user => user.id)
+
+                                if (ret.length > 0) {
+                                    // ONLY IF ret.length > 0
                                     users.forEach(u => {
                                         if (!thankeesArray.includes(u)) {
                                             // TODO: Create user
@@ -92,18 +99,39 @@ export const pointsListener: ProcessInterface = {
                                                     }
                                                 }
                                             )
-                                                .then(res => res.json())
-                                                .then(json => {
-                                                    console.log(json)
+                                                .then(res => res.text())
+                                                .then(j => {
+                                                    // NOTE: Confirmation of finish
                                                 })
                                         }
                                     })
                                 } else {
-                                    console.log('Same sizes')
+                                    allIds.forEach(id => {
+                                        let params = {
+                                            id,
+                                            multiplier: 1
+                                        }
+
+                                        fetch(`http://127.0.0.1:3000/user`, {
+                                            method: 'POST',
+                                            body: JSON.stringify(params),
+                                            headers: {
+                                                'Content-Type':
+                                                    'application/json',
+                                                Authorization: 'Bearer ' + token
+                                            }
+                                        })
+                                            .then(res => res.json())
+                                            .then(j => {
+                                                // NOTE: Confirmation of finish
+                                            })
+                                    })
                                 }
-                            })
-                    }
-                )
+                            } else {
+                                console.log('Same sizes')
+                            }
+                        })
+                })
             }
         })
     }
